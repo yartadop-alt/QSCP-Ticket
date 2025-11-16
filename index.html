@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>QSCP WORK MANAGEMENT PORTAL</title>
+
+<style>
+:root{
+  --accent-1:#004a80;
+  --accent-2:#006bb3;
+  --danger:#c0392b;
+  --card-bg:rgba(255,255,255,0.98);
+  --bg-dark:#000;
+  --stat-yellow:#f1c40f;
+  --stat-green:#2ecc71;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:#000;color:#fff;font-family:Segoe UI;overflow-x:hidden;}
+#bgVideo{position:fixed;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:-2;}
+.bg-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:-1;}
+header{position:fixed;top:0;left:0;right:0;height:70px;display:flex;align-items:center;justify-content:center;color:#fff;background:rgba(0,0,0,0.55);border-bottom:1px solid rgba(255,255,255,0.12);z-index:10;}
+main{padding-top:90px;display:flex;flex-wrap:wrap;gap:20px;padding-left:15px;padding-right:15px;align-items:flex-start;justify-content:flex-start;}
+#loginSection{width:360px;background:var(--card-bg);color:#000;padding:28px;border-radius:10px;box-shadow:0 8px 35px rgba(0,0,0,0.45);}
+#loginSection input,#loginSection select,#loginSection textarea{width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:6px;font-size:14px;}
+.password-wrapper{position:relative;}
+.password-wrapper input{width:100%;padding-right:40px;}
+.toggle-password{position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:13px;color:#666;}
+#loginBtn{width:100%;padding:11px;background:linear-gradient(90deg,var(--accent-2),var(--accent-1));border:none;border-radius:8px;color:white;font-weight:600;cursor:pointer;}
+.dashboard-wrap{flex:1;min-width:300px;background:rgba(0,0,0,0.55);padding:20px;border-radius:10px;box-shadow:0 8px 25px rgba(0,0,0,0.4);}
+#adminSection{display:flex;flex-wrap:wrap;gap:15px;}
+#adminSection label{font-weight:600;margin-bottom:5px;}
+.form-group{display:flex;flex-direction:column;width:48%;}
+#adminSection textarea{height:20px;resize:none;}
+#adminSection button{width:100%;padding:10px 15px;margin-top:10px;background:linear-gradient(90deg,var(--accent-2),var(--accent-1));border:none;border-radius:6px;color:#fff;cursor:pointer;}
+table{width:100%;border-collapse:collapse;font-size:14px;color:#fff;}
+thead th{background:var(--accent-1);padding:10px;text-align:left;position:sticky;top:0;}
+tbody td{padding:10px;border-bottom:1px solid rgba(255,255,255,0.12);}
+.deleteBtn{background:var(--danger);color:#fff;border:none;padding:6px 8px;border-radius:6px;cursor:pointer;}
+#searchInput{padding:12px;width:100%;border-radius:6px;background:#fff;color:#000;margin-bottom:12px;font-size:14px;}
+.stats-row{display:flex;gap:20px;align-items:center;margin-bottom:25px;margin-top:5px;flex-wrap:wrap;}
+.stat-circle{width:100px;height:100px;border-radius:50%;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(255,255,255,0.07);box-shadow:0 6px 18px rgba(0,0,0,0.45);position:relative;font-weight:700;font-size:13px;text-align:center;}
+.stat-circle div:first-child{font-size:20px;font-weight:700;margin-bottom:3px;}
+.stat-ring{position:absolute;inset:6px;border-radius:50%;border:6px solid rgba(255,255,255,0.09);}
+.stat-yellow .stat-ring{border-color:var(--stat-yellow);}
+.stat-green .stat-ring{border-color:var(--stat-green);}
+@media(max-width:768px){
+  main{flex-direction:column;padding:20px;}
+  #loginSection{width:100%;max-width:360px;margin:0 auto;}
+  .dashboard-wrap{width:100%;padding:15px;}
+  table,thead,tbody,tr,td,th{font-size:12px;}
+  .form-group{width:100%;}
+  #searchInput{font-size:12px;}
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+
+<video id="bgVideo" autoplay muted loop>
+  <source src="Pictures/c4i.mp4" type="video/mp4">
+</video>
+<div class="bg-overlay"></div>
+
+<header><h2>QSCP Work Management Portal</h2></header>
+
+<main>
+  <aside id="loginSection">
+    <h2>Sign In</h2>
+    <input id="email" type="email" placeholder="Email (Gmail)">
+    <div class="password-wrapper">
+      <input id="password" type="password" placeholder="Password">
+      <span class="toggle-password" onclick="togglePassword()">Show</span>
+    </div>
+    <button id="loginBtn">Login</button>
+  </aside>
+
+  <section id="dashboardWrap" class="dashboard-wrap" style="display:none;">
+    <div id="userActions" style="display:none;margin-bottom:15px;">
+      <span id="welcomeTxt" style="font-weight:600"></span>
+      <button onclick="logout()" style="padding:8px 12px;margin-left:15px;background:#d33;border:none;border-radius:6px;color:#fff;cursor:pointer;">Logout</button>
+    </div>
+
+    <div id="dashboardContent" style="display:none;">
+      <div id="adminSection" style="display:none;">
+        <div class="form-group">
+          <label>Ticket For</label>
+          <select id="systemSelect">
+            <option value="">-- Select --</option>
+            <option value="C4I">C4I</option>
+            <option value="ECC">ECC</option>
+            <option value="PS">Police Stations</option>
+            <option value="CP">Camera Sites</option>
+            <option value="EE">Entry Exit</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Title</label>
+          <input id="title" type="text">
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="description"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Assign To</label>
+          <select id="assignedTo"></select>
+        </div>
+        <div class="form-group">
+          <label>Priority</label>
+          <select id="priority">
+            <option value="">Select…</option>
+            <option>Critical-4 hours</option>
+            <option>Routine-24 hours</option>
+          </select>
+        </div>
+        <div style="width:100%;">
+          <button onclick="createTicket()">Create</button>
+        </div>
+      </div>
+
+      <div class="stats-row" id="statsBox"></div>
+      <input id="searchInput" placeholder="Search by title/system/assigned..." onkeyup="renderTickets()">
+      <div style="overflow:auto;max-height:50vh;margin-top:10px;">
+        <table id="ticketTable">
+          <thead>
+            <tr>
+              <th>ID</th><th>System</th><th>Title</th><th>Description</th><th>Assigned</th><th>Priority</th><th>Status</th><th>Tkt Date & Time</th><th>Status Date & Time</th><th>Action</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<script>
+const admins = {"khurrumshehzad1@gmail.com":"Pakistan@#12145","abdullahsohail2@gmail.com":"Pakistan@#12145","afaqaltafraja1@gmail.com":"Pakistan@#12145","hassanawan1@gmail.com":"Pakistan@#12145"};
+const members = {"shehzad1@gmail.com":"Pakistan@786","hammeed1@gmail.com":"Pakistan@786","nisar1@gmail.com":"Pakistan@786","islamnabi1@gmail.com":"Pakistan@786"};
+
+const SUPABASE_URL = "https://cokwumpsbgttgxvjacda.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNva3d1bXBzYmd0dGd4dmphY2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMyNTg1NjQsImV4cCI6MjA3ODgzNDU2NH0.qiKMP1qOaRnm2fkdz22N-jP26pjjeFI82YLZ-DjLefU";
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = localStorage.getItem("currentUser");
+let counters = JSON.parse(localStorage.getItem("counters")||"null");
+if(!counters) counters={C4I:101,ECC:201,PS:301,CP:401,EE:501};
+
+document.getElementById("loginBtn").addEventListener("click", login);
+
+function togglePassword(){ 
+  const pass=document.getElementById("password"); 
+  const toggle=document.querySelector(".toggle-password"); 
+  if(pass.type==="password"){pass.type="text"; toggle.textContent="Hide";} 
+  else{pass.type="password"; toggle.textContent="Show";}
+}
+
+function login(){
+  const e = document.getElementById("email").value.trim().toLowerCase();
+  const p = document.getElementById("password").value;
+  if(admins[e]===p || members[e]===p){
+    currentUser = e;
+    localStorage.setItem("currentUser", currentUser);
+    showDashboard();
+  } else {
+    alert("Invalid login!");
+  }
+}
+
+function logout(){
+  localStorage.removeItem("currentUser");
+  location.reload();
+}
+
+function populateMemberDropdown(){
+  const sel=document.getElementById("assignedTo");
+  sel.innerHTML="<option value=''>Assign…</option>";
+  Object.keys(members).forEach(m=> sel.innerHTML += `<option>${m}</option>`);
+}
+
+async function createTicket(){
+  const sys=document.getElementById("systemSelect").value;
+  const title=document.getElementById("title").value.trim();
+  const desc=document.getElementById("description").value.trim();
+  const assign=document.getElementById("assignedTo").value;
+  const priority=document.getElementById("priority").value;
+
+  if(!sys||!title||!desc||!assign||!priority){ alert("Fill all fields!"); return; }
+
+  if(!counters[sys] && counters[sys]!==0) counters[sys]=100;
+  const id = counters[sys]++;
+  localStorage.setItem("counters",JSON.stringify(counters));
+  const ticket_id = `QSCP/${sys}/${id}`;
+  const dateTime = new Date();
+  const status_time = null;
+
+  const { error } = await sb.from("tickets").insert([{
+    ticket_id,
+    system: sys,
+    title,
+    description: desc,
+    assigned_to: assign,
+    priority,
+    status: "Pending",
+    created_at: dateTime,
+    status_time: status_time
+  }]);
+
+  if(error){ console.error(error); alert("Error creating ticket!"); return; }
+  renderTickets();
+  alert("Ticket Created!");
+}
+
+async function renderTickets(){
+  const { data: tickets } = await sb.from("tickets").select("*").order('created_at',{ascending:false});
+  const tbody=document.querySelector("#ticketTable tbody");
+  tbody.innerHTML="";
+  const isAdmin=admins[currentUser];
+
+  tickets.filter(t=>{
+    if(!isAdmin && t.assigned_to!==currentUser) return false;
+    const searchVal = document.getElementById("searchInput").value.trim().toLowerCase();
+    return !searchVal || t.title.toLowerCase().includes(searchVal) || t.system.toLowerCase().includes(searchVal) || t.assigned_to.toLowerCase().includes(searchVal);
+  }).forEach(t=>{
+    const row=document.createElement("tr");
+    let statusControl="";
+    if(!isAdmin){
+      statusControl=`<select class="memberStatusSel">
+        <option ${t.status==="Pending"?"selected":""}>Pending</option>
+        <option ${t.status==="In Progress"?"selected":""}>In Progress</option>
+        <option ${t.status==="Completed"?"selected":""}>Completed</option>
+      </select>`;
+    }
+
+    row.innerHTML=`<td>${t.ticket_id}</td><td>${t.system}</td><td>${t.title}</td><td>${t.description}</td><td>${t.assigned_to}</td><td>${t.priority}</td><td>${isAdmin ? t.status : statusControl}</td><td>${new Date(t.created_at).toLocaleString()}</td><td>${t.status_time ? new Date(t.status_time).toLocaleString() : "—"}</td><td>${isAdmin ? `<button class="deleteBtn">Delete</button>`:""}</td>`;
+
+    if(!isAdmin){
+      row.querySelector(".memberStatusSel").addEventListener("change", async (e)=>{
+        const status = e.target.value;
+        const status_time = new Date();
+        await sb.from("tickets").update({ status, status_time }).eq("ticket_id", t.ticket_id);
+        renderTickets();
+      });
+    }
+
+    if(isAdmin){
+      row.querySelector(".deleteBtn").addEventListener("click", async ()=>{
+        if(confirm("Delete ticket?")){
+          await sb.from("tickets").delete().eq("ticket_id", t.ticket_id);
+          renderTickets();
+        }
+      });
+    }
+
+    tbody.appendChild(row);
+  });
+
+  renderStats(tickets);
+}
+
+function renderStats(tickets){
+  tickets = tickets || [];
+  const progress = tickets.filter(t=> t.status.toLowerCase().includes("progress")).length;
+  const completed = tickets.filter(t=> t.status.toLowerCase().includes("completed")).length;
+  document.getElementById("statsBox").innerHTML=`<div class="stat-circle stat-yellow"><div>${progress}</div><div>In<br>Progress</div><div class="stat-ring"></div></div><div class="stat-circle stat-green"><div>${completed}</div><div>Completed</div><div class="stat-ring"></div></div><div style="margin-left:20px;color:#fff;"><strong>Total:</strong> ${tickets.length}<br><span style="color:#bbb;font-size:13px;">Updated automatically</span></div>`;
+}
+
+async function showDashboard(){
+  document.getElementById("loginSection").style.display="none";
+  document.getElementById("dashboardWrap").style.display="block";
+  document.getElementById("dashboardContent").style.display="block";
+  document.getElementById("userActions").style.display="block";
+  document.getElementById("welcomeTxt").textContent="Welcome, "+currentUser;
+  document.getElementById("adminSection").style.display = admins[currentUser] ? "flex" : "none";
+
+  populateMemberDropdown();
+  await renderTickets();
+
+  // Realtime auto-refresh
+  sb.from('tickets').on('*', payload=>{
+    renderTickets();
+  }).subscribe();
+}
+
+if(currentUser) showDashboard();
+</script>
+</body>
+</html>
